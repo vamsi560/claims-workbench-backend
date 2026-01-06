@@ -36,6 +36,7 @@ class LLMMetricSchema(BaseModel):
     temperature: Optional[Decimal] = None
     created_at: datetime
 
+    model_config = {"protected_namespaces": ()}
     class Config:
         from_attributes = True
 
@@ -86,6 +87,8 @@ class LLMMetricsOverview(BaseModel):
     avg_cost_per_fnol: Decimal
     cost_trend: List[dict]
     model_distribution: List[dict]
+
+    model_config = {"protected_namespaces": ()}
 
 
 class FailureAnalytics(BaseModel):
