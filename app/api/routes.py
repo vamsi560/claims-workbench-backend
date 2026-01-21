@@ -151,30 +151,37 @@ async def get_dashboard_stats():
         )
 
 
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
+import json
+
 @router.post("/fnol-ingest")
 async def ingest_fnol_email(payload: ParsedEmailSchema):
     """
     Receives parsed email data from Logic Apps, extracts FNOL fields using LangChain + Gemini,
-    and stores the result in Retool.
+    and stores the result in PostgreSQL.
     """
     with tracer.start_as_current_span("ingest_fnol_email"):
         extracted_fields = extract_fnol_fields_with_gemini(payload.body)
-        # Prepare data for Retool
-        retool_payload = {
-            "subject": payload.subject,
-            "body": payload.body,
-            "attachments": payload.attachments,
-            "sender": payload.sender,
-            "received_at": payload.received_at.isoformat(),
-            "extracted_fields": extracted_fields,
-        }
-        # Send to Retool (stub)
-        headers = {"Authorization": f"Bearer {RETOOL_API_KEY}", "Content-Type": "application/json"}
-        try:
-            response = requests.post(RETOOL_API_URL, json=retool_payload, headers=headers)
-            response.raise_for_status()
-            retool_result = response.json()
-        except Exception as e:
-            logger.error(f"Retool API error: {e}")
-            raise HTTPException(status_code=500, detail="Failed to store FNOL in Retool")
-        return {"status": "success", "extracted_fields": extracted_fields, "retool_result": retool_result}
+        # Store in PostgreSQL
+        engine = create_async_engine(
+            get_settings().database_url.replace('postgresql://', 'postgresql+asyncpg://'),
+            echo=False
+        )
+        async with engine.begin() as conn:
+            await conn.execute(
+                text("""
+                    INSERT INTO email_intake (subject, body, attachments, sender, received_at, extracted_fields)
+                    VALUES (:subject, :body, :attachments, :sender, :received_at, :extracted_fields)
+                """),
+                {
+                    "subject": payload.subject,
+                    "body": payload.body,
+                    "attachments": json.dumps(payload.attachments),
+                    "sender": payload.sender,
+                    "received_at": payload.received_at.isoformat() if payload.received_at else None,
+                    "extracted_fields": json.dumps(extracted_fields),
+                }
+            )
+        await engine.dispose()
+        return {"status": "success", "extracted_fields": extracted_fields}
