@@ -17,9 +17,6 @@ class FNOLStageExecutionSchema(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class LLMMetricSchema(BaseModel):
     id: UUID
@@ -37,8 +34,6 @@ class LLMMetricSchema(BaseModel):
     created_at: datetime
 
     model_config = {"protected_namespaces": ()}
-    class Config:
-        from_attributes = True
 
 
 class FNOLTraceSchema(BaseModel):
@@ -48,9 +43,6 @@ class FNOLTraceSchema(BaseModel):
     end_time: Optional[datetime] = None
     total_duration_ms: Optional[int] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class FNOLListItemSchema(BaseModel):
@@ -69,8 +61,6 @@ class FNOLDetailSchema(BaseModel):
     stage_executions: List[FNOLStageExecutionSchema]
     llm_metrics: List[LLMMetricSchema]
 
-    class Config:
-        from_attributes = True
 
 
 class FNOLListResponse(BaseModel):
@@ -114,6 +104,3 @@ class ParsedEmailSchema(BaseModel):
     sender: Optional[str] = None
     to: Optional[list[str]] = None
     cc: Optional[list[str]] = None
-
-    class Config:
-        from_attributes = True
