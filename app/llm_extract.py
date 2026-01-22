@@ -17,7 +17,11 @@ Email Body:
 """
 
 def extract_fnol_fields_with_gemini(email_body: str) -> dict:
+<<<<<<< HEAD
     print("GEMINI_API_KEY:", GEMINI_API_KEY)
+=======
+    print("GEMINI_API_KEY:", GEMINI_API_KEY)  # Debug print for Render logs
+>>>>>>> 113127c (Fix FNOL detail endpoint - convert string ID to integer for database query)
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-flash")
     prompt = FNOL_PROMPT.format(body=email_body)

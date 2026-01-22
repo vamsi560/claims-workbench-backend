@@ -104,11 +104,16 @@ async def list_fnols(
 async def get_fnol_detail(fnol_id: str):
     with tracer.start_as_current_span("get_fnol_detail", attributes={"fnol_id": fnol_id}):
         try:
-            # Extract email ID from fnol_id (format: EMAIL-123)
+            # Extract email ID from fnol_id (format: EMAIL-123) and convert to int
             if not fnol_id.startswith("EMAIL-"):
                 raise HTTPException(status_code=404, detail=f"Invalid FNOL ID format: {fnol_id}")
             
-            email_id = fnol_id.replace("EMAIL-", "")
+            email_id_str = fnol_id.replace("EMAIL-", "")
+            
+            try:
+                email_id = int(email_id_str)
+            except ValueError:
+                raise HTTPException(status_code=404, detail=f"Invalid FNOL ID format: {fnol_id}")
             
             # Query database for email details
             db_url = get_settings().database_url.replace('postgresql://', 'postgresql+asyncpg://').replace('?sslmode=require', '')
@@ -132,6 +137,7 @@ async def get_fnol_detail(fnol_id: str):
                 if not row:
                     raise HTTPException(status_code=404, detail=f"FNOL {fnol_id} not found")
                 
+<<<<<<< HEAD
                 # Handle datetime conversion
                 received_at = row[5]
                 if isinstance(received_at, str):
@@ -141,6 +147,19 @@ async def get_fnol_detail(fnol_id: str):
                         received_at = datetime.utcnow()
                 elif received_at is None:
                     received_at = datetime.utcnow()
+=======
+                # Handle datetime conversion safely
+                received_at = row[5]
+                if received_at is None:
+                    received_at = datetime.utcnow()
+                elif isinstance(received_at, str):
+                    try:
+                        # Handle ISO format strings
+                        received_at = datetime.fromisoformat(received_at.replace('Z', '+00:00'))
+                    except:
+                        received_at = datetime.utcnow()
+                # If it's already a datetime object, use it as-is
+>>>>>>> 113127c (Fix FNOL detail endpoint - convert string ID to integer for database query)
                 
                 # Create trace from email data
                 trace = FNOLTraceSchema(
