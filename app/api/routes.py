@@ -132,29 +132,39 @@ async def get_fnol_detail(fnol_id: str):
                 if not row:
                     raise HTTPException(status_code=404, detail=f"FNOL {fnol_id} not found")
                 
+                # Handle datetime conversion
+                received_at = row[5]
+                if isinstance(received_at, str):
+                    try:
+                        received_at = datetime.fromisoformat(received_at.replace('Z', '+00:00'))
+                    except:
+                        received_at = datetime.utcnow()
+                elif received_at is None:
+                    received_at = datetime.utcnow()
+                
                 # Create trace from email data
                 trace = FNOLTraceSchema(
                     fnol_id=fnol_id,
                     status="SUCCESS",
-                    start_time=row[5] if row[5] else datetime.utcnow(),  # received_at
-                    end_time=row[5] if row[5] else datetime.utcnow(),    # received_at
+                    start_time=received_at,
+                    end_time=received_at,
                     total_duration_ms=1000,  # Placeholder
-                    created_at=row[5] if row[5] else datetime.utcnow()   # received_at
+                    created_at=received_at
                 )
                 
                 # Create a stage execution for email processing
                 stage_executions = [
                     FNOLStageExecutionSchema(
-                        id="00000000-0000-0000-0000-000000000001",  # Placeholder UUID
+                        id=uuid.uuid4(),  # Generate proper UUID
                         fnol_id=fnol_id,
                         stage_name="EMAIL_PROCESSING",
                         status="SUCCESS",
-                        start_time=row[5] if row[5] else datetime.utcnow(),
-                        end_time=row[5] if row[5] else datetime.utcnow(),
+                        start_time=received_at,
+                        end_time=received_at,
                         duration_ms=1000,
                         error_code=None,
                         error_message=None,
-                        created_at=row[5] if row[5] else datetime.utcnow()
+                        created_at=received_at
                     )
                 ]
                 
@@ -165,10 +175,10 @@ async def get_fnol_detail(fnol_id: str):
                         extracted_data = json.loads(row[6]) if isinstance(row[6], str) else row[6]
                         llm_metrics = [
                             LLMMetricSchema(
-                                id="00000000-0000-0000-0000-000000000002",  # Placeholder UUID
+                                id=uuid.uuid4(),  # Generate proper UUID
                                 fnol_id=fnol_id,
                                 stage_name="EMAIL_PROCESSING",
-                                model_name="gemini-2.5-flash",
+                                model_name="gemini-1.5-pro",
                                 prompt_version="v1.0",
                                 prompt_hash="test_hash",
                                 prompt_tokens=500,
@@ -177,10 +187,11 @@ async def get_fnol_detail(fnol_id: str):
                                 cost_usd=0.01,
                                 latency_ms=2000,
                                 temperature=0.7,
-                                created_at=row[5] if row[5] else datetime.utcnow()
+                                created_at=received_at
                             )
                         ]
-                    except:
+                    except Exception as json_error:
+                        logger.warning(f"Failed to parse extracted_fields: {json_error}")
                         pass  # Skip if JSON parsing fails
             
             await engine.dispose()
@@ -276,6 +287,8 @@ async def get_dashboard_stats():
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy import text
 import json
+import uuid
+from uuid import UUID
 
 @router.post("/fnol-ingest")
 async def ingest_fnol_email(payload: ParsedEmailSchema):
