@@ -182,7 +182,7 @@ async def ingest_fnol_email(payload: ParsedEmailSchema):
                     "body": payload.body,
                     "attachments": json.dumps(payload.attachments),
                     "sender": payload.sender,
-                    "received_at": payload.received_at.isoformat() if payload.received_at else None,
+                    "received_at": payload.received_at,
                     "extracted_fields": json.dumps(extracted_fields),
                 }
             )
