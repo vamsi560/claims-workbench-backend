@@ -19,7 +19,7 @@ Email Body:
 def extract_fnol_fields_with_gemini(email_body: str) -> dict:
     print("GEMINI_API_KEY:", GEMINI_API_KEY)
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     prompt = FNOL_PROMPT.format(body=email_body)
     response = model.generate_content(prompt)
     # Stub: Parse response to dict (replace with actual parsing logic)
