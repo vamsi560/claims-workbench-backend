@@ -165,9 +165,11 @@ async def ingest_fnol_email(payload: ParsedEmailSchema):
     with tracer.start_as_current_span("ingest_fnol_email"):
         extracted_fields = extract_fnol_fields_with_gemini(payload.body)
         # Store in PostgreSQL
+        db_url = get_settings().database_url.replace('postgresql://', 'postgresql+asyncpg://').replace('?sslmode=require', '')
         engine = create_async_engine(
-            get_settings().database_url.replace('postgresql://', 'postgresql+asyncpg://'),
-            echo=False
+            db_url,
+            echo=False,
+            connect_args={"ssl": "require"}
         )
         async with engine.begin() as conn:
             await conn.execute(
