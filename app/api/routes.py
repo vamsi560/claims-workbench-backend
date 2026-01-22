@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime, timedelta
 from typing import Optional
 from decimal import Decimal
-from app.config import get_settings
 
 # from app.models import FNOLTrace, FNOLStageExecution, LLMMetric  # Removed for Retool migration
 from app.schemas import (
@@ -20,13 +19,12 @@ from app.schemas import (
 from app.observability.logging import get_logger
 from app.observability.tracing import tracer
 from app.llm_extract import extract_fnol_fields_with_gemini
+from app.config import get_settings
 import requests
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api")
 
-RETOOL_API_URL = "https://retool.yourdomain.com/api/data"  # Replace with actual Retool API endpoint
-RETOOL_API_KEY = "YOUR_RETOOL_API_KEY"  # Replace with actual Retool API key
 
 @router.get("/fnols", response_model=FNOLListResponse)
 async def list_fnols(
@@ -38,10 +36,55 @@ async def list_fnols(
     date_to: Optional[datetime] = Query(None),
 ):
     with tracer.start_as_current_span("list_fnols"):
-        # Stubbed response for Retool migration
-        items = []
-        total = 0
-        total_pages = 0
+        try:
+            # Query database for actual email intake data
+            db_url = get_settings().database_url.replace('postgresql://', 'postgresql+asyncpg://').replace('?sslmode=require', '')
+            engine = create_async_engine(
+                db_url,
+                echo=False,
+                connect_args={"ssl": "require"}
+            )
+            
+            async with engine.begin() as conn:
+                # Get total count
+                total_result = await conn.execute(text("SELECT COUNT(*) FROM email_intake"))
+                total = total_result.scalar()
+                logger.info(f"Total records in email_intake: {total}")
+                
+                # Get paginated data
+                offset = (page - 1) * page_size
+                result = await conn.execute(
+                    text("""
+                        SELECT id, subject, sender, received_at, extracted_fields 
+                        FROM email_intake 
+                        ORDER BY received_at DESC NULLS LAST
+                        LIMIT :limit OFFSET :offset
+                    """),
+                    {"limit": page_size, "offset": offset}
+                )
+                
+                items = []
+                for row in result:
+                    logger.info(f"Processing row: {row}")
+                    items.append(FNOLListItemSchema(
+                        fnol_id=f"EMAIL-{row[0]}",  # Use email_intake.id as fnol_id
+                        status="SUCCESS",  # Default status for email intake
+                        total_duration_ms=None,
+                        failure_stage=None,
+                        created_at=row[3] if row[3] else datetime.utcnow()  # received_at
+                    ))
+            
+            await engine.dispose()
+            total_pages = (total + page_size - 1) // page_size
+            
+            logger.info(f"Returning {len(items)} items, total: {total}")
+
+        except Exception as e:
+            logger.error(f"Error querying email_intake: {e}")
+            # Return empty response on error
+            items = []
+            total = 0
+            total_pages = 0
 
         logger.info(
             f"Listed FNOLs: page={page}, total={total}",
@@ -182,7 +225,7 @@ async def ingest_fnol_email(payload: ParsedEmailSchema):
                     "body": payload.body,
                     "attachments": json.dumps(payload.attachments),
                     "sender": payload.sender,
-                    "received_at": payload.received_at,
+                    "received_at": payload.received_at.isoformat() if payload.received_at else None,
                     "extracted_fields": json.dumps(extracted_fields),
                 }
             )
