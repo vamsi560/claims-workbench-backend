@@ -58,10 +58,6 @@ class FNOLDetailSchema(BaseModel):
     stage_executions: List[FNOLStageExecutionSchema]
     llm_metrics: List[LLMMetricSchema]
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 113127c (Fix FNOL detail endpoint - convert string ID to integer for database query)
 
 class FNOLListResponse(BaseModel):
     items: List[FNOLListItemSchema]

@@ -2,6 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime, timedelta
 from typing import Optional
 from decimal import Decimal
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
+import json
+import uuid
+from uuid import UUID
 
 # from app.models import FNOLTrace, FNOLStageExecution, LLMMetric  # Removed for Retool migration
 from app.schemas import (
@@ -137,17 +142,6 @@ async def get_fnol_detail(fnol_id: str):
                 if not row:
                     raise HTTPException(status_code=404, detail=f"FNOL {fnol_id} not found")
                 
-<<<<<<< HEAD
-                # Handle datetime conversion
-                received_at = row[5]
-                if isinstance(received_at, str):
-                    try:
-                        received_at = datetime.fromisoformat(received_at.replace('Z', '+00:00'))
-                    except:
-                        received_at = datetime.utcnow()
-                elif received_at is None:
-                    received_at = datetime.utcnow()
-=======
                 # Handle datetime conversion safely
                 received_at = row[5]
                 if received_at is None:
@@ -159,7 +153,6 @@ async def get_fnol_detail(fnol_id: str):
                     except:
                         received_at = datetime.utcnow()
                 # If it's already a datetime object, use it as-is
->>>>>>> 113127c (Fix FNOL detail endpoint - convert string ID to integer for database query)
                 
                 # Create trace from email data
                 trace = FNOLTraceSchema(
@@ -302,12 +295,6 @@ async def get_dashboard_stats():
             manual_review_percentage=manual_review_percentage,
         )
 
-
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import text
-import json
-import uuid
-from uuid import UUID
 
 @router.post("/fnol-ingest")
 async def ingest_fnol_email(payload: ParsedEmailSchema):
