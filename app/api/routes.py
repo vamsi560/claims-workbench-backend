@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime, timedelta
 from typing import Optional
 from decimal import Decimal
+from app.config import get_settings
 
 # from app.models import FNOLTrace, FNOLStageExecution, LLMMetric  # Removed for Retool migration
 from app.schemas import (
