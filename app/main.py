@@ -9,6 +9,10 @@ from app.observability.tracing import instrument_fastapi
 from app.observability.metrics import metrics_endpoint
 
 settings = get_settings()
+
+# Add your deployed frontend origin to allowed CORS origins
+settings.cors_origins.append("https://yellow-dune-0859cda0f.4.azurestaticapps.net")
+
 setup_logging(settings.log_level)
 logger = get_logger(__name__)
 
