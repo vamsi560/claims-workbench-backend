@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 from decimal import Decimal
 from uuid import UUID
 
@@ -67,7 +67,7 @@ class FNOLDetailSchema(BaseModel):
     trace: FNOLTraceSchema
     stage_executions: List[FNOLStageExecutionSchema]
     llm_metrics: List[LLMMetricSchema]
-    extracted_fields: dict[str, any] = {}
+    extracted_fields: dict[str, Any] = {}
 
     class Config:
         from_attributes = True
