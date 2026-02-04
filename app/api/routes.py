@@ -29,7 +29,8 @@ router = APIRouter(prefix="/api")
 RETOOL_API_URL = "https://retool.yourdomain.com/api/data"  # Replace with actual Retool API endpoint
 RETOOL_API_KEY = "YOUR_RETOOL_API_KEY"  # Replace with actual Retool API key
 
-DATABASE_URL = "postgresql://retool:npg_UWqxdlf1LmS7@ep-round-breeze-af1fyksh-pooler.c-2.us-west-2.retooldb.com/retool?sslmode=require"
+# Use asyncpg driver for async SQLAlchemy
+DATABASE_URL = "postgresql+asyncpg://retool:npg_UWqxdlf1LmS7@ep-round-breeze-af1fyksh-pooler.c-2.us-west-2.retooldb.com/retool?sslmode=require"
 engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 
 @router.get("/fnols", response_model=FNOLListResponse)
