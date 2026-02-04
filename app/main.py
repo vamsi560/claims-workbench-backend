@@ -33,7 +33,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["https://yellow-dune-0859cda0f.4.azurestaticapps.net"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
