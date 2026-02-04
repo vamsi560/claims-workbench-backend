@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime, timedelta
 from typing import Optional
 from decimal import Decimal
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
 
 # from app.models import FNOLTrace, FNOLStageExecution, LLMMetric  # Removed for Retool migration
 from app.schemas import (
@@ -27,6 +29,9 @@ router = APIRouter(prefix="/api")
 RETOOL_API_URL = "https://retool.yourdomain.com/api/data"  # Replace with actual Retool API endpoint
 RETOOL_API_KEY = "YOUR_RETOOL_API_KEY"  # Replace with actual Retool API key
 
+DATABASE_URL = "postgresql://retool:npg_UWqxdlf1LmS7@ep-round-breeze-af1fyksh-pooler.c-2.us-west-2.retooldb.com/retool?sslmode=require"
+engine = create_async_engine(DATABASE_URL, echo=False, future=True)
+
 @router.get("/fnols", response_model=FNOLListResponse)
 async def list_fnols(
     page: int = Query(1, ge=1),
@@ -37,16 +42,46 @@ async def list_fnols(
     date_to: Optional[datetime] = Query(None),
 ):
     with tracer.start_as_current_span("list_fnols"):
-        # Stubbed response for Retool migration
-        items = []
-        total = 0
-        total_pages = 0
-
+        offset = (page - 1) * page_size
+        filters = []
+        params = {}
+        if status:
+            filters.append("status = :status")
+            params["status"] = status
+        if date_from:
+            filters.append("created_at >= :date_from")
+            params["date_from"] = date_from
+        if date_to:
+            filters.append("created_at <= :date_to")
+            params["date_to"] = date_to
+        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+        query = f"""
+            SELECT fnol_id, status, total_duration_ms, NULL as failure_stage, created_at
+            FROM fnol_traces
+            {where_clause}
+            ORDER BY created_at DESC
+            OFFSET :offset LIMIT :limit
+        """
+        count_query = f"SELECT COUNT(*) FROM fnol_traces {where_clause}"
+        params["offset"] = offset
+        params["limit"] = page_size
+        async with engine.connect() as conn:
+            result = await conn.execute(text(query), params)
+            rows = result.fetchall()
+            items = [FNOLListItemSchema(
+                fnol_id=row[0],
+                status=row[1],
+                total_duration_ms=row[2],
+                failure_stage=row[3],
+                created_at=row[4],
+            ) for row in rows]
+            total_result = await conn.execute(text(count_query), params)
+            total = total_result.scalar() or 0
+        total_pages = (total + page_size - 1) // page_size
         logger.info(
             f"Listed FNOLs: page={page}, total={total}",
             extra={"page": page, "total": total, "filters": {"status": status, "search": search}}
         )
-
         return FNOLListResponse(
             items=items,
             total=total,
