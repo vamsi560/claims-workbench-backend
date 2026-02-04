@@ -31,6 +31,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+logger.info(f"CORS allowed origins: {['https://yellow-dune-0859cda0f.4.azurestaticapps.net']}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://yellow-dune-0859cda0f.4.azurestaticapps.net"],
